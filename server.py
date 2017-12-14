@@ -9,40 +9,32 @@ import os
 
 DEFAULT_PORT = 10000
 
-def readClient(csock):
-  try:
-    while (1):
-      message = csock.recv(1024)
-      message = message.decode()
-      print(message)
-      if len(message) == 0: 
-        raise Exception("Client closed unexpectedly")
+def readClient(serverSocket):
+  try:  
+    while True:
+      rec_packet, addr = serverSocket.recvfrom(5120)
+      print(rec_packet)
   except:
-    csock.close()
+    serverSocket.close()
 
 def sendClient(csock):
   csock.send("Ping packet".encode())
               
 def main(serverPort):
-  serverSocket = socket(AF_INET, SOCK_STREAM)
+  serverSocket = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)
+
   serverSocket.bind(('localhost',serverPort))
-  serverSocket.listen(5)
+  serverSocket.setsockopt(SOL_IP, IP_HDRINCL, 1)
   print('Ready to serve on port',serverPort)
   try:
-    while True:
-      connectionSocket, addr = serverSocket.accept()
-      print("serverSocket accepted")
-      connectionSocket.send("You are now connected to the server".encode())
-      workerThread = threading.Thread(target = readClient, args=(connectionSocket,))
+      workerThread = threading.Thread(target = readClient, args=(serverSocket,))
+      #workerThread2 = threading.Thread(target = sendClient, args=(connectionSocket,)) 
       workerThread.start()
-      workerThread2 = threading.Thread(target = sendClient, args=(connectionSocket,)) 
-      workerThread2.start()
-
+      #workerThread2.start()
   except KeyboardInterrupt:
     connectionSocket.send("Server shutting down now! Thanks for pinging!\n".encode())
     serverSocket.close()
     workerThread.join()
-        
     print("Shutdown complete... exiting")
     sys.exit()
                   
